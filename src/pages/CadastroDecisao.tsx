@@ -7,6 +7,7 @@ import { Loader, Save, ArrowLeft } from 'lucide-react';
 type DecisaoType = 'Aceitar Jesus' | 'Reconciliar com Cristo' | 'Batismo' | 'Quero GDC';
 type EstadoCivilType = 'Solteiro' | 'Casado' | 'União Estável' | 'Divorciado' | 'Viúvo';
 type CelebracaoType = 'Dominical' | 'Eleve' | 'Ignição' | 'Outros';
+type StatusType = 'Contato realizado' | 'Em GDC' | 'Curso de batismo' | 'Aguardando contato';
 
 const CadastroDecisao: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +27,8 @@ const CadastroDecisao: React.FC = () => {
     bairro: '',
     celular: '',
     celebracao: '' as CelebracaoType,
-    celebracao_extra: ''
+    celebracao_extra: '',
+    status: 'Aguardando contato' as StatusType
   });
 
   const decisoes: DecisaoType[] = [
@@ -49,6 +51,13 @@ const CadastroDecisao: React.FC = () => {
     'Eleve',
     'Ignição',
     'Outros'
+  ];
+
+  const status_options: StatusType[] = [
+    'Contato realizado',
+    'Em GDC',
+    'Curso de batismo',
+    'Aguardando contato'
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -110,7 +119,7 @@ const CadastroDecisao: React.FC = () => {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
               <label htmlFor="nome" className="block text-sm font-medium text-gray-700 mb-1">
-                Nome *
+                Nome * <span className="text-red-500">*</span>
               </label>
               <input
                 required
@@ -125,7 +134,7 @@ const CadastroDecisao: React.FC = () => {
 
             <div>
               <label htmlFor="decisao" className="block text-sm font-medium text-gray-700 mb-1">
-                Decisão *
+                Decisão <span className="text-red-500">*</span>
               </label>
               <select
                 required
@@ -144,9 +153,10 @@ const CadastroDecisao: React.FC = () => {
 
             <div>
               <label htmlFor="data_decisao" className="block text-sm font-medium text-gray-700 mb-1">
-                Data da Decisão
+                Data da Decisão <span className="text-red-500">*</span>
               </label>
               <input
+                required
                 type="date"
                 id="data_decisao"
                 name="data_decisao"
@@ -158,9 +168,10 @@ const CadastroDecisao: React.FC = () => {
 
             <div>
               <label htmlFor="estado_civil" className="block text-sm font-medium text-gray-700 mb-1">
-                Estado Civil
+                Estado Civil <span className="text-red-500">*</span>
               </label>
               <select
+                required
                 id="estado_civil"
                 name="estado_civil"
                 value={formData.estado_civil}
@@ -176,9 +187,10 @@ const CadastroDecisao: React.FC = () => {
 
             <div>
               <label htmlFor="nascimento" className="block text-sm font-medium text-gray-700 mb-1">
-                Data de Nascimento
+                Data de Nascimento <span className="text-red-500">*</span>
               </label>
               <input
+                required
                 type="date"
                 id="nascimento"
                 name="nascimento"
@@ -260,9 +272,10 @@ const CadastroDecisao: React.FC = () => {
 
             <div>
               <label htmlFor="celebracao" className="block text-sm font-medium text-gray-700 mb-1">
-                Celebração
+                Celebração <span className="text-red-500">*</span>
               </label>
               <select
+                required
                 id="celebracao"
                 name="celebracao"
                 value={formData.celebracao}
@@ -291,9 +304,30 @@ const CadastroDecisao: React.FC = () => {
                 />
               </div>
             )}
+
+            <div>
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                Status <span className="text-red-500">*</span>
+              </label>
+              <select
+                required
+                id="status"
+                name="status"
+                value={formData.status}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {status_options.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="flex justify-end pt-6">
+          <div className="flex justify-between items-center pt-6">
+            <p className="text-sm text-gray-500 italic">
+              Campos marcados com <span className="text-red-500">*</span> são obrigatórios
+            </p>
             <button
               type="submit"
               disabled={loading}

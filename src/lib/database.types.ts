@@ -26,6 +26,7 @@ export interface Database {
           celebracao_extra: string | null
           user_id: string
           created_at: string
+          status: string
         }
         Insert: {
           id?: number
@@ -43,6 +44,7 @@ export interface Database {
           celebracao_extra?: string | null
           user_id: string
           created_at?: string
+          status?: string
         }
         Update: {
           id?: number
@@ -60,6 +62,7 @@ export interface Database {
           celebracao_extra?: string | null
           user_id?: string
           created_at?: string
+          status?: string
         }
       }
     }

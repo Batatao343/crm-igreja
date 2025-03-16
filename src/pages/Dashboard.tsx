@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
-import { LogOut, Plus, Loader, RefreshCcw, Calendar, Filter, Download } from 'lucide-react';
-import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { LogOut, Plus, Loader, RefreshCcw, Calendar, Filter, Download, Trash2 } from 'lucide-react';
+import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   BarChart,
@@ -26,6 +26,13 @@ type Decisao = Database['public']['Tables']['decisoes']['Row'];
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
+const STATUS_OPTIONS = [
+  'Contato realizado',
+  'Em GDC',
+  'Curso de batismo',
+  'Aguardando contato'
+] as const;
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -42,18 +49,40 @@ const Dashboard: React.FC = () => {
   });
   const [selectedDecisao, setSelectedDecisao] = useState<string>('');
   const [selectedCidade, setSelectedCidade] = useState<string>('');
+  const [searchNome, setSearchNome] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
 
   const fetchDecisoes = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('decisoes')
         .select('*')
+        .gte('data_decisao', dateRange.start)
+        .lte('data_decisao', dateRange.end)
         .order('data_decisao', { ascending: false });
+
+      if (selectedDecisao) {
+        query = query.eq('decisao', selectedDecisao);
+      }
+
+      if (selectedCidade) {
+        query = query.ilike('cidade', `%${selectedCidade}%`);
+      }
+
+      if (searchNome) {
+        query = query.ilike('nome', `%${searchNome}%`);
+      }
+
+      if (selectedStatus) {
+        query = query.eq('status', selectedStatus);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setDecisoes(data || []);
-      applyFilters(data || []);
+      setFilteredDecisoes(data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar decisões');
     } finally {
@@ -63,32 +92,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDecisoes();
-  }, []);
-
-  const applyFilters = (data: Decisao[]) => {
-    let filtered = data;
-
-    // Date range filter
-    filtered = filtered.filter(
-      (d) => d.data_decisao >= dateRange.start && d.data_decisao <= dateRange.end
-    );
-
-    // Decision type filter
-    if (selectedDecisao) {
-      filtered = filtered.filter((d) => d.decisao === selectedDecisao);
-    }
-
-    // City filter
-    if (selectedCidade) {
-      filtered = filtered.filter((d) => d.cidade?.toLowerCase().includes(selectedCidade.toLowerCase()));
-    }
-
-    setFilteredDecisoes(filtered);
-  };
-
-  useEffect(() => {
-    applyFilters(decisoes);
-  }, [dateRange, selectedDecisao, selectedCidade, decisoes]);
+  }, [dateRange.start, dateRange.end, selectedDecisao, selectedCidade, searchNome, selectedStatus]);
 
   const exportToCSV = () => {
     setExporting(true);
@@ -183,6 +187,14 @@ const Dashboard: React.FC = () => {
       quantidade: count,
     }));
 
+  const statusChartData = Object.entries(
+    filteredDecisoes.reduce((acc, decisao) => {
+      const status = decisao.status || 'Aguardando contato';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([name, value]) => ({ name, value }));
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -192,7 +204,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const uniqueCidades = Array.from(new Set(decisoes.map((d) => d.cidade).filter(Boolean)));
+  const uniqueCidades = Array.from(new Set(decisoes.map(d => d.cidade || ''))).filter(cidade => cidade !== '');
   const tiposDecisao = Array.from(new Set(decisoes.map((d) => d.decisao)));
 
   return (
@@ -213,6 +225,20 @@ const Dashboard: React.FC = () => {
                   <Download className="w-4 h-4 mr-2" />
                 )}
                 Exportar CSV
+              </button>
+              <button
+                onClick={() => navigate('/atualizar-status')}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+              >
+                <RefreshCcw className="w-4 h-4 mr-2" />
+                Atualizar Status
+              </button>
+              <button
+                onClick={() => navigate('/remover-entrada')}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Remover Entrada
               </button>
               <button
                 onClick={() => navigate('/cadastro')}
@@ -253,7 +279,7 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data Inicial
@@ -310,6 +336,23 @@ const Dashboard: React.FC = () => {
                 ))}
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Status
+              </label>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Todos</option>
+                {STATUS_OPTIONS.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -327,7 +370,7 @@ const Dashboard: React.FC = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-2">Média por Dia</h3>
             <p className="text-3xl font-bold text-purple-600">
               {filteredDecisoes.length > 0
-                ? (filteredDecisoes.length / 30).toFixed(1)
+                ? (filteredDecisoes.length / (differenceInDays(parseISO(dateRange.end), parseISO(dateRange.start)) + 1)).toFixed(1)
                 : '0'}
             </p>
           </div>
@@ -351,7 +394,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Pie Chart */}
+          {/* Pie Chart - Tipos de Decisão */}
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Distribuição por Tipo</h3>
             <div className="h-80">
@@ -378,8 +421,43 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* Pie Chart - Status */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Distribuição por Status</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={statusChartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {statusChartData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={
+                          entry.name === 'Contato realizado' ? '#10B981' :
+                          entry.name === 'Em GDC' ? '#3B82F6' :
+                          entry.name === 'Curso de batismo' ? '#8B5CF6' :
+                          '#FBBF24'
+                        } 
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
           {/* Bar Chart */}
-          <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
+          <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Decisões por Celebração</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -388,7 +466,11 @@ const Dashboard: React.FC = () => {
                   <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="quantidade" fill="#3B82F6" />
+                  <Bar dataKey="quantidade">
+                    {barChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -397,8 +479,17 @@ const Dashboard: React.FC = () => {
 
         {/* Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
-          <div className="px-6 py-4 border-b border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-800">Últimas Decisões</h2>
+            <div className="flex items-center">
+              <input
+                type="text"
+                placeholder="Buscar por nome..."
+                value={searchNome}
+                onChange={(e) => setSearchNome(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
           {loading ? (
             <div className="flex justify-center items-center p-8">
@@ -423,6 +514,9 @@ const Dashboard: React.FC = () => {
                       Decisão
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Celebração
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -444,6 +538,16 @@ const Dashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {decisao.decisao}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          decisao.status === 'Contato realizado' ? 'bg-green-100 text-green-800' :
+                          decisao.status === 'Em GDC' ? 'bg-blue-100 text-blue-800' :
+                          decisao.status === 'Curso de batismo' ? 'bg-purple-100 text-purple-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {decisao.status || 'Aguardando contato'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {decisao.celebracao}
