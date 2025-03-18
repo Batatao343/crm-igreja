@@ -356,9 +356,11 @@ const Dashboard: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Todos</option>
-                {STATUS_OPTIONS.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
+                <option value="Contato realizado">Contato realizado</option>
+                <option value="Aguardando contato">Aguardando contato</option>
+                <option value="Não retornou o contato">Não retornou o contato</option>
+                <option value="Encaminhado para GDC">Encaminhado para GDC</option>
+                <option value="Encaminhado para batismo">Encaminhado para batismo</option>
               </select>
             </div>
             <div>
