@@ -178,7 +178,7 @@ const Dashboard: React.FC = () => {
   }));
 
   const decisoesPorTempo = filteredDecisoes.reduce((acc, decisao) => {
-    const date = format(new Date(decisao.data_decisao), 'yyyy-MM-dd');
+    const date = format(new Date(decisao.data_decisao + 'T00:00:00'), 'yyyy-MM-dd');
     acc[date] = (acc[date] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -186,7 +186,7 @@ const Dashboard: React.FC = () => {
   const lineChartData = Object.entries(decisoesPorTempo)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({
-      date: format(new Date(date), 'dd/MM'),
+      date: format(new Date(date + 'T00:00:00'), 'dd/MM', { locale: ptBR }),
       quantidade: count,
     }));
 
@@ -409,8 +409,14 @@ const Dashboard: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={lineChartData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <XAxis dataKey="date" angle={-45} textAnchor="end" height={60} />
+                  <YAxis
+                    allowDecimals={false}
+                    domain={[
+                      (dataMin: number) => Math.max(0, dataMin - 1),
+                      (dataMax: number) => dataMax + 1
+                    ]}
+                  />
                   <Tooltip />
                   <Line type="monotone" dataKey="quantidade" stroke="#3B82F6" />
                 </LineChart>
