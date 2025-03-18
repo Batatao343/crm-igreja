@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Loader, Save, ArrowLeft } from 'lucide-react';
+import { format } from 'date-fns';
 
 type DecisaoType = 'Aceitar Jesus' | 'Reconciliar com Cristo' | 'Batismo' | 'Quero GDC';
 type EstadoCivilType = 'Solteiro' | 'Casado' | 'União Estável' | 'Divorciado' | 'Viúvo';
 type CelebracaoType = 'Dominical' | 'Eleve' | 'Ignição' | 'Outros';
-type StatusType = 'Contato realizado' | 'Em GDC' | 'Curso de batismo' | 'Aguardando contato';
+type StatusType = 'Contato realizado' | 'Aguardando contato' | 'Não retornou o contato' | 'Encaminhado para GDC' | 'Encaminhado para batismo';
 
 const CadastroDecisao: React.FC = () => {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ const CadastroDecisao: React.FC = () => {
   const [formData, setFormData] = useState({
     nome: '',
     decisao: '' as DecisaoType,
-    data_decisao: new Date().toISOString().split('T')[0],
+    data_decisao: format(new Date(), 'yyyy-MM-dd'),
     estado_civil: '' as EstadoCivilType,
     nascimento: '',
     email: '',
@@ -28,7 +29,11 @@ const CadastroDecisao: React.FC = () => {
     celular: '',
     celebracao: '' as CelebracaoType,
     celebracao_extra: '',
-    status: 'Aguardando contato' as StatusType
+    status: 'Aguardando contato' as StatusType,
+    deseja_gdc: false,
+    observacao: '',
+    gdc_encaminhado: '',
+    nome_cadastrante: ''
   });
 
   const decisoes: DecisaoType[] = [
@@ -55,12 +60,15 @@ const CadastroDecisao: React.FC = () => {
 
   const status_options: StatusType[] = [
     'Contato realizado',
-    'Em GDC',
-    'Curso de batismo',
-    'Aguardando contato'
+    'Aguardando contato',
+    'Não retornou o contato',
+    'Encaminhado para GDC',
+    'Encaminhado para batismo'
   ];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -81,7 +89,8 @@ const CadastroDecisao: React.FC = () => {
         .insert([
           {
             ...formData,
-            user_id: user.id
+            user_id: user.id,
+            cadastrado_por: user.id
           }
         ]);
 
@@ -321,6 +330,79 @@ const CadastroDecisao: React.FC = () => {
                   <option key={status} value={status}>{status}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="col-span-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Deseja GDC
+              </label>
+              <div className="mt-1 space-y-2">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="deseja_gdc"
+                    checked={formData.deseja_gdc === true}
+                    onChange={() => setFormData({ ...formData, deseja_gdc: true })}
+                    className="form-radio text-blue-600"
+                  />
+                  <span className="ml-2">Sim</span>
+                </label>
+                <label className="inline-flex items-center ml-4">
+                  <input
+                    type="radio"
+                    name="deseja_gdc"
+                    checked={formData.deseja_gdc === false}
+                    onChange={() => setFormData({ ...formData, deseja_gdc: false })}
+                    className="form-radio text-blue-600"
+                  />
+                  <span className="ml-2">Não</span>
+                </label>
+              </div>
+            </div>
+
+            {formData.deseja_gdc && (
+              <div className="col-span-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Encaminhado para o GDC:
+                </label>
+                <input
+                  type="text"
+                  name="gdc_encaminhado"
+                  value={formData.gdc_encaminhado}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  placeholder="Nome do GDC"
+                />
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="observacao" className="block text-sm font-medium text-gray-700 mb-1">
+                Observação
+              </label>
+              <textarea
+                id="observacao"
+                name="observacao"
+                value={formData.observacao}
+                onChange={handleInputChange}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Digite aqui qualquer observação adicional..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nome do cadastrante <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="nome_cadastrante"
+                value={formData.nome_cadastrante}
+                onChange={handleInputChange}
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              />
             </div>
           </div>
 

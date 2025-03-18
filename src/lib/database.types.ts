@@ -27,6 +27,11 @@ export interface Database {
           user_id: string
           created_at: string
           status: string
+          deseja_gdc: boolean
+          observacao: string | null
+          cadastrado_por: string
+          gdc_encaminhado: string | null
+          nome_cadastrante: string
         }
         Insert: {
           id?: number
@@ -45,6 +50,11 @@ export interface Database {
           user_id: string
           created_at?: string
           status?: string
+          deseja_gdc?: boolean
+          observacao?: string | null
+          cadastrado_por?: string
+          gdc_encaminhado?: string | null
+          nome_cadastrante: string
         }
         Update: {
           id?: number
@@ -63,6 +73,11 @@ export interface Database {
           user_id?: string
           created_at?: string
           status?: string
+          deseja_gdc?: boolean
+          observacao?: string | null
+          cadastrado_por?: string
+          gdc_encaminhado?: string | null
+          nome_cadastrante?: string
         }
       }
     }

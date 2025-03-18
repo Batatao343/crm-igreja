@@ -5,13 +5,15 @@ import { Loader, ArrowLeft, Search, Save } from 'lucide-react';
 import { Database } from '../lib/database.types';
 
 type Decisao = Database['public']['Tables']['decisoes']['Row'];
+type StatusType = 'Contato realizado' | 'Aguardando contato' | 'Não retornou o contato' | 'Encaminhado para GDC' | 'Encaminhado para batismo';
 
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: StatusType[] = [
   'Contato realizado',
-  'Em GDC',
-  'Curso de batismo',
-  'Aguardando contato'
-] as const;
+  'Aguardando contato',
+  'Não retornou o contato',
+  'Encaminhado para GDC',
+  'Encaminhado para batismo'
+];
 
 const AtualizarStatus: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +24,12 @@ const AtualizarStatus: React.FC = () => {
   const [selectedDecisao, setSelectedDecisao] = useState<Decisao | null>(null);
   const [newStatus, setNewStatus] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    status: decisoes[0]?.status || 'Aguardando contato',
+    observacao: decisoes[0]?.observacao || '',
+    gdc_encaminhado: decisoes[0]?.gdc_encaminhado || '',
+    deseja_gdc: decisoes[0]?.deseja_gdc || false
+  });
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
@@ -73,6 +81,49 @@ const AtualizarStatus: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Erro ao atualizar status');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleDesejaGdcChange = (value: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      deseja_gdc: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { error } = await supabase
+        .from('decisoes')
+        .update({
+          status: formData.status,
+          observacao: formData.observacao,
+          gdc_encaminhado: formData.gdc_encaminhado,
+          deseja_gdc: formData.deseja_gdc
+        })
+        .eq('id', decisoes[0].id);
+
+      if (error) throw error;
+
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao atualizar status');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -134,6 +185,12 @@ const AtualizarStatus: React.FC = () => {
                   onClick={() => {
                     setSelectedDecisao(decisao);
                     setNewStatus(decisao.status || 'Aguardando contato');
+                    setFormData({
+                      status: decisao.status || 'Aguardando contato',
+                      observacao: decisao.observacao || '',
+                      gdc_encaminhado: decisao.gdc_encaminhado || '',
+                      deseja_gdc: decisao.deseja_gdc || false
+                    });
                   }}
                 >
                   <div className="flex justify-between items-start">
@@ -161,20 +218,86 @@ const AtualizarStatus: React.FC = () => {
                     Atualizar status para: {selectedDecisao.nome}
                   </h3>
                   <div className="space-y-4">
-                    <select
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    >
-                      {STATUS_OPTIONS.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </select>
+                    <div>
+                      <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                        Status <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        required
+                        id="status"
+                        name="status"
+                        value={formData.status}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        {STATUS_OPTIONS.map(status => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="observacao" className="block text-sm font-medium text-gray-700 mb-1">
+                        Observação
+                      </label>
+                      <textarea
+                        id="observacao"
+                        name="observacao"
+                        value={formData.observacao}
+                        onChange={handleInputChange}
+                        rows={4}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Digite aqui qualquer observação adicional..."
+                      />
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Deseja GDC
+                      </label>
+                      <div className="flex space-x-4">
+                        <label className="inline-flex items-center">
+                          <input
+                            type="radio"
+                            name="deseja_gdc"
+                            checked={formData.deseja_gdc === true}
+                            onChange={() => handleDesejaGdcChange(true)}
+                            className="form-radio text-blue-600"
+                          />
+                          <span className="ml-2">Sim</span>
+                        </label>
+                        <label className="inline-flex items-center">
+                          <input
+                            type="radio"
+                            name="deseja_gdc"
+                            checked={formData.deseja_gdc === false}
+                            onChange={() => handleDesejaGdcChange(false)}
+                            className="form-radio text-blue-600"
+                          />
+                          <span className="ml-2">Não</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {formData.deseja_gdc && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Encaminhado para o GDC:
+                        </label>
+                        <input
+                          type="text"
+                          name="gdc_encaminhado"
+                          value={formData.gdc_encaminhado}
+                          onChange={handleInputChange}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                          placeholder="Nome do GDC"
+                        />
+                      </div>
+                    )}
+
                     <button
-                      onClick={handleStatusUpdate}
-                      disabled={saving || newStatus === selectedDecisao.status}
+                      onClick={handleSubmit}
+                      disabled={saving || formData.status === selectedDecisao.status}
                       className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50"
                     >
                       {saving ? (

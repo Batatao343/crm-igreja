@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import CadastroDecisao from './pages/CadastroDecisao';
 import AtualizarStatus from './pages/AtualizarStatus';
 import RemoverEntrada from './pages/RemoverEntrada';
+import VisualizarCadastro from './pages/VisualizarCadastro';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -44,6 +45,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <RemoverEntrada />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visualizar-cadastro"
+            element={
+              <ProtectedRoute>
+                <VisualizarCadastro />
               </ProtectedRoute>
             }
           />

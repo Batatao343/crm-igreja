@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
-import { LogOut, Plus, Loader, RefreshCcw, Calendar, Filter, Download, Trash2 } from 'lucide-react';
+import { LogOut, Plus, Loader, RefreshCcw, Calendar, Filter, Download, Trash2, Eye } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -23,8 +23,6 @@ import {
 } from 'recharts';
 
 type Decisao = Database['public']['Tables']['decisoes']['Row'];
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 const STATUS_OPTIONS = [
   'Contato realizado',
@@ -50,7 +48,8 @@ const Dashboard: React.FC = () => {
   const [selectedDecisao, setSelectedDecisao] = useState<string>('');
   const [selectedCidade, setSelectedCidade] = useState<string>('');
   const [searchNome, setSearchNome] = useState<string>('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedDesejaGdc, setSelectedDesejaGdc] = useState<boolean | null>(null);
 
   const fetchDecisoes = async () => {
     try {
@@ -78,6 +77,10 @@ const Dashboard: React.FC = () => {
         query = query.eq('status', selectedStatus);
       }
 
+      if (selectedDesejaGdc !== null) {
+        query = query.eq('deseja_gdc', selectedDesejaGdc);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
@@ -92,7 +95,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDecisoes();
-  }, [dateRange.start, dateRange.end, selectedDecisao, selectedCidade, searchNome, selectedStatus]);
+  }, [dateRange.start, dateRange.end, selectedDecisao, selectedCidade, searchNome, selectedStatus, selectedDesejaGdc]);
 
   const exportToCSV = () => {
     setExporting(true);
@@ -241,6 +244,13 @@ const Dashboard: React.FC = () => {
                 Remover Entrada
               </button>
               <button
+                onClick={() => navigate('/visualizar-cadastro')}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Visualizar Cadastro
+              </button>
+              <button
                 onClick={() => navigate('/cadastro')}
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
@@ -279,7 +289,7 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data Inicial
@@ -341,16 +351,28 @@ const Dashboard: React.FC = () => {
                 Status
               </label>
               <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
+                value={selectedStatus || ''}
+                onChange={(e) => setSelectedStatus(e.target.value as string || null)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Todos</option>
-                {STATUS_OPTIONS.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
+                {STATUS_OPTIONS.map(status => (
+                  <option key={status} value={status}>{status}</option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Deseja GDC
+              </label>
+              <select
+                value={selectedDesejaGdc === null ? '' : selectedDesejaGdc.toString()}
+                onChange={(e) => setSelectedDesejaGdc(e.target.value === '' ? null : e.target.value === 'true')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Todos</option>
+                <option value="true">Sim</option>
+                <option value="false">Não</option>
               </select>
             </div>
           </div>
@@ -411,7 +433,16 @@ const Dashboard: React.FC = () => {
                     dataKey="value"
                   >
                     {pieChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={
+                          index % 5 === 0 ? '#22C55E' :  // Verde
+                          index % 5 === 1 ? '#0EA5E9' :  // Azul
+                          index % 5 === 2 ? '#A855F7' :  // Roxo
+                          index % 5 === 3 ? '#F59E0B' :  // Âmbar
+                          '#EC4899'                      // Rosa
+                        }
+                      />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -441,10 +472,11 @@ const Dashboard: React.FC = () => {
                       <Cell 
                         key={`cell-${index}`} 
                         fill={
-                          entry.name === 'Contato realizado' ? '#10B981' :
-                          entry.name === 'Em GDC' ? '#3B82F6' :
-                          entry.name === 'Curso de batismo' ? '#8B5CF6' :
-                          '#FBBF24'
+                          entry.name === 'Contato realizado' ? '#22C55E' :
+                          entry.name === 'Encaminhado para GDC' ? '#0EA5E9' :
+                          entry.name === 'Encaminhado para batismo' ? '#A855F7' :
+                          entry.name === 'Não retornou o contato' ? '#EF4444' :
+                          '#F59E0B'
                         } 
                       />
                     ))}
@@ -468,7 +500,16 @@ const Dashboard: React.FC = () => {
                   <Tooltip />
                   <Bar dataKey="quantidade">
                     {barChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={
+                          index % 5 === 0 ? '#22C55E' :  // Verde
+                          index % 5 === 1 ? '#0EA5E9' :  // Azul
+                          index % 5 === 2 ? '#A855F7' :  // Roxo
+                          index % 5 === 3 ? '#F59E0B' :  // Âmbar
+                          '#EC4899'                      // Rosa
+                        }
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -517,10 +558,10 @@ const Dashboard: React.FC = () => {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Celebração
+                      Deseja GDC
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cidade
+                      Encaminhado para o GDC
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contato
@@ -539,22 +580,26 @@ const Dashboard: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {decisao.decisao}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           decisao.status === 'Contato realizado' ? 'bg-green-100 text-green-800' :
-                          decisao.status === 'Em GDC' ? 'bg-blue-100 text-blue-800' :
-                          decisao.status === 'Curso de batismo' ? 'bg-purple-100 text-purple-800' :
+                          decisao.status === 'Encaminhado para GDC' ? 'bg-blue-100 text-blue-800' :
+                          decisao.status === 'Encaminhado para batismo' ? 'bg-purple-100 text-purple-800' :
+                          decisao.status === 'Não retornou o contato' ? 'bg-red-100 text-red-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {decisao.status || 'Aguardando contato'}
+                          {decisao.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          decisao.deseja_gdc ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {decisao.deseja_gdc ? 'Sim' : 'Não'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {decisao.celebracao}
-                        {decisao.celebracao_extra && ` - ${decisao.celebracao_extra}`}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {decisao.cidade}
+                        {decisao.gdc_encaminhado || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {decisao.celular && (
