@@ -504,7 +504,13 @@ const Dashboard: React.FC = () => {
                 <BarChart data={barChartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis />
+                  <YAxis
+                    allowDecimals={false}
+                    domain={[
+                      (dataMin: number) => Math.max(0, dataMin - 1),
+                      (dataMax: number) => dataMax + 1
+                    ]}
+                  />
                   <Tooltip />
                   <Bar dataKey="quantidade">
                     {barChartData.map((entry, index) => (
