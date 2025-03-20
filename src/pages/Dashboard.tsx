@@ -187,7 +187,7 @@ const Dashboard: React.FC = () => {
   const lineChartData = Object.entries(decisoesPorTempo)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({
-      date: `<strong>S</strong> ${format(new Date(date + 'T00:00:00'), 'dd/MM', { locale: ptBR })}`,
+      date: `S ${format(new Date(date + 'T00:00:00'), 'dd/MM', { locale: ptBR })}`,
       quantidade: count,
     }));
 
