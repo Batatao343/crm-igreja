@@ -6,7 +6,7 @@ import { Loader, Save, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
 type DecisaoType = 'Aceitar Jesus' | 'Reconciliar com Cristo' | 'Batismo' | 'Quero GDC';
-type EstadoCivilType = 'Solteiro' | 'Casado' | 'União Estável' | 'Divorciado' | 'Viúvo';
+type EstadoCivilType = 'Solteiro' | 'Casado' | 'União Estável' | 'Divorciado' | 'Viúvo' | 'Noivo(a)' | 'Outro';
 type CelebracaoType = 'Dominical' | 'Eleve' | 'Ignição' | 'Outros';
 type StatusType = 'Contato realizado' | 'Aguardando contato' | 'Não retornou o contato' | 'Encaminhado para GDC' | 'Encaminhado para batismo';
 
@@ -48,7 +48,9 @@ const CadastroDecisao: React.FC = () => {
     'Casado',
     'União Estável',
     'Divorciado',
-    'Viúvo'
+    'Viúvo',
+    'Noivo(a)',
+    'Outro'
   ];
 
   const celebracoes: CelebracaoType[] = [
