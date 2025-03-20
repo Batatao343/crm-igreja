@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
 import { LogOut, Plus, Loader, RefreshCcw, Calendar, Filter, Download, Trash2, Eye } from 'lucide-react';
-import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, parseISO } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, parseISO, startOfWeek, endOfWeek, eachWeekOfInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   BarChart,
@@ -178,15 +178,16 @@ const Dashboard: React.FC = () => {
   }));
 
   const decisoesPorTempo = filteredDecisoes.reduce((acc, decisao) => {
-    const date = format(new Date(decisao.data_decisao + 'T00:00:00'), 'yyyy-MM-dd');
-    acc[date] = (acc[date] || 0) + 1;
+    const date = new Date(decisao.data_decisao + 'T00:00:00');
+    const weekStart = format(startOfWeek(date, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+    acc[weekStart] = (acc[weekStart] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   const lineChartData = Object.entries(decisoesPorTempo)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({
-      date: format(new Date(date + 'T00:00:00'), 'dd/MM', { locale: ptBR }),
+      date: `<strong>S</strong> ${format(new Date(date + 'T00:00:00'), 'dd/MM', { locale: ptBR })}`,
       quantidade: count,
     }));
 
@@ -391,10 +392,10 @@ const Dashboard: React.FC = () => {
             <p className="text-3xl font-bold text-green-600">{filteredDecisoes.length}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Média por Dia</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Média por Semana</h3>
             <p className="text-3xl font-bold text-purple-600">
               {filteredDecisoes.length > 0
-                ? (filteredDecisoes.length / (differenceInDays(parseISO(dateRange.end), parseISO(dateRange.start)) + 1)).toFixed(1)
+                ? (filteredDecisoes.length / Math.ceil((differenceInDays(parseISO(dateRange.end), parseISO(dateRange.start)) + 1) / 7)).toFixed(1)
                 : '0'}
             </p>
           </div>
